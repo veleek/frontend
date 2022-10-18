@@ -1,4 +1,8 @@
-import "hammerjs";
+import "@interactjs/actions/drag";
+import "@interactjs/auto-start";
+import interact from "@interactjs/interact";
+import "@interactjs/pointer-events/index";
+import type { Interactable, InteractEvent } from "@interactjs/types";
 import {
   css,
   CSSResultGroup,
@@ -18,6 +22,8 @@ declare global {
   }
 }
 
+const DRAG_THRESHOLD = 10;
+
 const A11Y_KEY_CODES = new Set([
   "ArrowRight",
   "ArrowUp",
@@ -28,19 +34,6 @@ const A11Y_KEY_CODES = new Set([
   "Home",
   "End",
 ]);
-
-const getPercentageFromEvent = (e: HammerInput, vertical: boolean) => {
-  if (vertical) {
-    const y = e.center.y;
-    const offset = e.target.getBoundingClientRect().top;
-    const total = e.target.clientHeight;
-    return Math.max(Math.min(1, 1 - (y - offset) / total), 0);
-  }
-  const x = e.center.x;
-  const offset = e.target.getBoundingClientRect().left;
-  const total = e.target.clientWidth;
-  return Math.max(Math.min(1, (x - offset) / total), 0);
-};
 
 @customElement("ha-bar-slider")
 export class HaBarSlider extends LitElement {
@@ -67,8 +60,6 @@ export class HaBarSlider extends LitElement {
 
   @property()
   public label?: string;
-
-  private _mc?: HammerManager;
 
   @property({ type: Boolean, reflect: true })
   public pressed = false;
@@ -131,54 +122,76 @@ export class HaBarSlider extends LitElement {
   @query("#slider")
   private slider;
 
+  private _interactable?: Interactable;
+
+  private _dragStartEvent?: InteractEvent;
+
+  private _dragActive = false;
+
+  private getPercentageFromEvent(event: InteractEvent) {
+    const slider = interact.getElementRect(event.target);
+    if (this.vertical) {
+      const value = event.pageY / slider.height;
+      return Math.max(Math.min(1, 1 - value), 0);
+    }
+    const value = event.pageX / slider.width;
+    return Math.max(Math.min(1, value), 0);
+  }
+
+  private checkDragThreshold(e2: InteractEvent): boolean {
+    if (!this._dragStartEvent) return false;
+    if (this.vertical) {
+      return Math.abs(this._dragStartEvent.pageY - e2.pageY) > DRAG_THRESHOLD;
+    }
+    return Math.abs(this._dragStartEvent.pageX - e2.pageX) > DRAG_THRESHOLD;
+  }
+
   setupListeners() {
-    if (this.slider && !this._mc) {
-      this._mc = new Hammer.Manager(this.slider, {
-        touchAction: this.vertical ? "pan-x" : "pan-y",
-      });
-      this._mc.add(
-        new Hammer.Pan({
-          threshold: 10,
-          direction: Hammer.DIRECTION_ALL,
-          enable: true,
+    if (this.slider && !this._interactable) {
+      this._interactable = interact(this.slider) as Interactable;
+
+      this._interactable
+        .draggable({
+          origin: "self",
         })
-      );
+        .on("dragstart", (event) => {
+          this.pressed = true;
+          if (this.disabled) return;
+          this._dragStartEvent = event;
+        })
+        .on("dragmove", (event) => {
+          if (this.disabled) return;
+          if (!this._dragActive) {
+            if (!this.checkDragThreshold(event)) return;
+            this._dragActive = true;
+          }
 
-      this._mc.add(new Hammer.Tap({ event: "singletap" }));
+          const percentage = this.getPercentageFromEvent(event);
+          this.value = this.percentageToValue(percentage);
+          const value = this.steppedValue(this.value);
+          fireEvent(this, "slider-moved", { value });
+        })
+        .on("dragend", (event) => {
+          this.pressed = false;
+          if (this.disabled || !this._dragActive) return;
+          const percentage = this.getPercentageFromEvent(event);
+          this.value = this.steppedValue(this.percentageToValue(percentage));
+          fireEvent(this, "slider-moved", { value: undefined });
+          fireEvent(this, "value-changed", { value: this.value });
+          this._dragStartEvent = undefined;
+          this._dragActive = false;
+        });
 
-      let savedValue;
-      this._mc.on("panstart", () => {
-        if (this.disabled) return;
-        this.pressed = true;
-        savedValue = this.value;
-      });
-      this._mc.on("pancancel", () => {
-        if (this.disabled) return;
-        this.pressed = false;
-        this.value = savedValue;
-      });
-      this._mc.on("panmove", (e) => {
-        if (this.disabled) return;
-        const percentage = getPercentageFromEvent(e, this.vertical);
-        this.value = this.percentageToValue(percentage);
-        const value = this.steppedValue(this.value);
-        fireEvent(this, "slider-moved", { value });
-      });
-      this._mc.on("panend", (e) => {
-        if (this.disabled) return;
-        this.pressed = false;
-        const percentage = getPercentageFromEvent(e, this.vertical);
-        this.value = this.steppedValue(this.percentageToValue(percentage));
-        fireEvent(this, "slider-moved", { value: undefined });
-        fireEvent(this, "value-changed", { value: this.value });
-      });
-
-      this._mc.on("singletap", (e) => {
-        if (this.disabled) return;
-        const percentage = getPercentageFromEvent(e, this.vertical);
-        this.value = this.steppedValue(this.percentageToValue(percentage));
-        fireEvent(this, "value-changed", { value: this.value });
-      });
+      this._interactable
+        .pointerEvents({
+          origin: "self",
+        })
+        .on("tap", (event) => {
+          if (this.disabled) return;
+          const percentage = this.getPercentageFromEvent(event);
+          this.value = this.steppedValue(this.percentageToValue(percentage));
+          fireEvent(this, "value-changed", { value: this.value });
+        });
 
       this.addEventListener("keydown", this._handleKeyDown);
       this.addEventListener("keyup", this._handleKeyUp);
@@ -186,9 +199,9 @@ export class HaBarSlider extends LitElement {
   }
 
   destroyListeners() {
-    if (this._mc) {
-      this._mc.destroy();
-      this._mc = undefined;
+    if (this._interactable) {
+      this._interactable.unset();
+      this._interactable = undefined;
     }
     this.removeEventListener("keydown", this._handleKeyDown);
     this.removeEventListener("keyup", this._handleKeyDown);
@@ -278,10 +291,13 @@ export class HaBarSlider extends LitElement {
         --slider-bar-border-radius: 12px;
         height: var(--slider-bar-thickness);
         width: 100%;
+        touch-action: pan-y;
+        -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
       }
       :host([vertical]) {
         width: var(--slider-bar-thickness);
         height: 100%;
+        touch-action: pan-x;
       }
       .slider {
         position: relative;
