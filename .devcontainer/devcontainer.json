@@ -5,8 +5,7 @@
     "context": ".."
   },
   "appPort": "8124:8123",
-  "context": "..",
-  "postCreateCommand": "script/bootstrap",
+  "postCreateCommand": "script/setup",
   "extensions": [
     "github.vscode-pull-request-github",
     "dbaeumer.vscode-eslint",
@@ -20,7 +19,6 @@
     "WORKSPACE_DIRECTORY": "${containerWorkspaceFolder}"
   },
   "settings": {
-    "terminal.integrated.shell.linux": "/bin/bash",
     "files.eol": "\n",
     "editor.tabSize": 2,
     "editor.formatOnPaste": false,
@@ -32,6 +30,13 @@
     "[javascript]": {
       "editor.defaultFormatter": "esbenp.prettier-vscode"
     },
-    "files.trimTrailingWhitespace": true
+    "files.trimTrailingWhitespace": true,
+    "terminal.integrated.profiles.linux": {
+      "bash": {
+        "path": "bash",
+        "icon": "terminal-bash"
+      }
+    },
+    "terminal.integrated.defaultProfile.linux": "bash"
   }
 }

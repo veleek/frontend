@@ -144,20 +144,15 @@ export class HaNumericStateTrigger extends LitElement {
   }
 
   public render() {
-    const trgFor = createDurationData(this.trigger.for);
-
-    const data = { ...this.trigger, for: trgFor };
+    const data = {
+      ...this.trigger,
+      for: createDurationData(this.trigger.for)
+    };
     const schema = this._schema(this.trigger.entity_id);
 
     return html`
-      <ha-form
-        .hass=${this.hass}
-        .data=${data}
-        .schema=${schema}
-        .disabled=${this.disabled}
-        @value-changed=${this._valueChanged}
-        .computeLabel=${this._computeLabelCallback}
-      ></ha-form>
+      <ha-form .hass=${this.hass} .data=${data} .schema=${schema} .disabled=${this.disabled}
+        @value-changed=${this._valueChanged} .computeLabel=${this._computeLabelCallback}></ha-form>
     `;
   }
 

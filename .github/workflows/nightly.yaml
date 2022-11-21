@@ -35,7 +35,7 @@ jobs:
           cache: yarn
 
       - name: Install dependencies
-        run: yarn install
+        run: ./script/setup
 
       - name: Download translations
         run: ./script/translations_download
@@ -43,14 +43,13 @@ jobs:
           LOKALISE_TOKEN: ${{ secrets.LOKALISE_TOKEN }}
 
       - name: Bump version
-        run: script/version_bump.js nightly
+        run: ./script/version_bump.js nightly
 
       - name: Build nightly Python wheels
         run: |
           pip install build
-          yarn install
 
-          script/build_frontend
+          ./script/build_frontend
 
           rm -rf dist home_assistant_frontend.egg-info
           python3 -m build

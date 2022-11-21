@@ -21,7 +21,7 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: yarn
       - name: Install dependencies
-        run: yarn install
+        run: ./script/setup
         env:
           CI: true
       - name: Build Demo

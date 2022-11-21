@@ -56,6 +56,10 @@ export class HaStateTrigger extends LitElement implements TriggerElement {
           selector: { entity: { multiple: true } },
         },
         {
+          type: "select",
+          options: [""]
+        },
+        {
           name: "attribute",
           selector: {
             attribute: {
@@ -141,24 +145,16 @@ export class HaStateTrigger extends LitElement implements TriggerElement {
   }
 
   protected render() {
-    const trgFor = createDurationData(this.trigger.for);
-
     const data = {
       ...this.trigger,
       entity_id: ensureArray(this.trigger.entity_id),
-      for: trgFor,
+      for: createDurationData(this.trigger.for),
     };
     const schema = this._schema(this.trigger.entity_id, this.trigger.attribute);
 
     return html`
-      <ha-form
-        .hass=${this.hass}
-        .data=${data}
-        .schema=${schema}
-        @value-changed=${this._valueChanged}
-        .computeLabel=${this._computeLabelCallback}
-        .disabled=${this.disabled}
-      ></ha-form>
+      <ha-form .hass=${this.hass} .data=${data} .schema=${schema} @value-changed=${this._valueChanged}
+        .computeLabel=${this._computeLabelCallback} .disabled=${this.disabled}></ha-form>
     `;
   }
 
