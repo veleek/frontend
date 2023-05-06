@@ -134,6 +134,12 @@ class DialogZoneDetail extends LitElement {
           },
         },
         {
+          name: "type",
+          required: true,
+          type: "multi_select",
+          options: ["Circle", "Polygon"],
+        },
+        {
           name: "icon",
           required: false,
           selector: {

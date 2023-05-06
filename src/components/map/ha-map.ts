@@ -1,6 +1,7 @@
 import {
   Circle,
   CircleMarker,
+  DivIcon,
   LatLngTuple,
   Layer,
   Map,
@@ -333,9 +334,6 @@ export class HaMap extends ReactiveElement {
       "--dark-primary-color"
     );
 
-    const className =
-      this.darkMode ?? this.hass.themes.darkMode ? "dark" : "light";
-
     for (const entity of this.entities) {
       const stateObj = hass.states[getEntityId(entity)];
       if (!stateObj) {
@@ -362,29 +360,12 @@ export class HaMap extends ReactiveElement {
           continue;
         }
 
-        // create icon
-        let iconHTML = "";
-        if (icon) {
-          const el = document.createElement("ha-icon");
-          el.setAttribute("icon", icon);
-          iconHTML = el.outerHTML;
-        } else {
-          const el = document.createElement("span");
-          el.innerHTML = title;
-          iconHTML = el.outerHTML;
-        }
-
         // create marker with the icon
         this._mapZones.push(
-          Leaflet.marker([latitude, longitude], {
-            icon: Leaflet.divIcon({
-              html: iconHTML,
-              iconSize: [24, 24],
-              className,
-            }),
-            interactive: this.interactiveZones,
-            title,
-          })
+          this._createMarker([latitude, longitude], {
+            icon,
+            title
+          });
         );
 
         // create circle around it
@@ -395,6 +376,21 @@ export class HaMap extends ReactiveElement {
             radius,
           })
         );
+
+        // Polygon
+        var polygonPointIcon = this._createIcon("mdi:circle-medium");
+        var points = [
+          [35.074192167305334, -80.73007106781007],
+          [35.072752140779336, -80.73159456253053],
+          [35.073700453787710, -80.73262453079225],
+          [35.074982414965530, -80.73114395141603]
+        ];
+
+        for (const point of points) {
+          this._mapZones.push(
+            this._createMarker(point, "mdi:circle-medium");
+          );
+        }
 
         continue;
       }
@@ -446,6 +442,36 @@ export class HaMap extends ReactiveElement {
 
     this._mapItems.forEach((marker) => map.addLayer(marker));
     this._mapZones.forEach((marker) => map.addLayer(marker));
+  }
+
+  private _createIcon(icon, title = ""): divIcon {
+    // create icon
+    let iconElement = null;
+    if (icon) {
+      const el = document.createElement("ha-icon");
+      el.setAttribute("icon", icon);
+    } else {
+      const el = document.createElement("span");
+      el.innerHTML = title;
+    }
+
+    const className =
+      this.darkMode ?? this.hass.themes.darkMode ? "dark" : "light";
+
+    return Leaflet.divIcon({
+      html: iconElement.innerHTML,
+      iconSize: [24, 24],
+      className,
+    })
+  }
+
+  private _createMarker(point: int[], icon: string, title: string = ""): marker {
+    // create marker with the icon
+    return Leaflet.marker(point, {
+      icon: _createIcon(icon, title),
+      interactive: this.interactiveZones,
+      title,
+    });
   }
 
   private async _attachObserver(): Promise<void> {
