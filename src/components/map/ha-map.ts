@@ -2,11 +2,13 @@ import {
   Circle,
   CircleMarker,
   DivIcon,
+  LatLngExpression,
   LatLngTuple,
   Layer,
   Map,
   Marker,
   Polyline,
+  PolylineOptions,
 } from "leaflet";
 import { css, CSSResultGroup, PropertyValues, ReactiveElement } from "lit";
 import { customElement, property, state } from "lit/decorators";
@@ -98,7 +100,12 @@ export class HaMap extends ReactiveElement {
 
   protected update(changedProps: PropertyValues) {
     super.update(changedProps);
-
+    console.log("ha-map update");
+    console.log({
+      entities: this.entities,
+      paths: this.paths,
+      layers: this.layers,
+    });
     if (!this._loaded) {
       return;
     }
@@ -153,6 +160,7 @@ export class HaMap extends ReactiveElement {
   private async _loadMap(): Promise<void> {
     let map = this.shadowRoot!.getElementById("map");
     if (!map) {
+      console.log("Creating map...");
       map = document.createElement("div");
       map.id = "map";
       this.shadowRoot!.append(map);
@@ -211,9 +219,48 @@ export class HaMap extends ReactiveElement {
     if (!this.layers) {
       return;
     }
+
+    console.log("Drawing layers");
+
     const map = this.leafletMap!;
     this.layers.forEach((layer) => {
+      console.log("Adding layer...");
+      console.log(layer);
       map.addLayer(layer);
+    });
+
+    // Polygon
+    var points: LatLngExpression[] = [
+      [35.074192167305334, -80.73007106781007],
+      [35.072752140779336, -80.73159456253053],
+      [35.07370045378771, -80.73262453079225],
+      [35.07498241496553, -80.73114395141603],
+    ];
+
+    var opts: PolylineOptions = {
+      fill: true,
+      //smoothFactor: 0.5,
+      fillColor: "#ff0000",
+      fillOpacity: 0.1,
+      stroke: true,
+      color: "#996622",
+    };
+    var poly = this.Leaflet!.polygon(points, opts);
+    map.addLayer(poly);
+
+    points.forEach((point, index) => {
+      console.log("Adding point...");
+
+      const marker = this._createMarker(
+        this.Leaflet!,
+        point,
+        "mdi:circle-medium"
+      );
+      marker.on("drag", () => {
+        points[index] = marker.getLatLng();
+        poly.setLatLngs(points);
+      });
+      map.addLayer(marker);
     });
   }
 
@@ -302,6 +349,9 @@ export class HaMap extends ReactiveElement {
   }
 
   private _drawEntities(): void {
+    console.log("ha-map._drawEntities");
+    console.log(this.entities);
+
     const hass = this.hass;
     const map = this.leafletMap;
     const Leaflet = this.Leaflet;
@@ -310,30 +360,31 @@ export class HaMap extends ReactiveElement {
       return;
     }
 
+    console.log("ha-map._drawEntities[0]");
+
     if (this._mapItems.length) {
       this._mapItems.forEach((marker) => marker.remove());
       this._mapItems = [];
     }
+
+    console.log("ha-map._drawEntities[1]");
 
     if (this._mapZones.length) {
       this._mapZones.forEach((marker) => marker.remove());
       this._mapZones = [];
     }
 
+    console.log("ha-map._drawEntities[2]");
+
     if (!this.entities) {
       return;
     }
 
-    const computedStyles = getComputedStyle(this);
-    const zoneColor = computedStyles.getPropertyValue("--accent-color");
-    const passiveZoneColor = computedStyles.getPropertyValue(
-      "--secondary-text-color"
-    );
-
-    const darkPrimaryColor = computedStyles.getPropertyValue(
-      "--dark-primary-color"
-    );
-
+    console.log("Okay... actually drawing stuff.");
+    //const computedStyles = getComputedStyle(this);
+    const zoneColor = "#ff0000"; //computedStyles.getPropertyValue("--accent-color");
+    const passiveZoneColor = "#00ff00";
+    const darkPrimaryColor = "#3333FF";
     for (const entity of this.entities) {
       const stateObj = hass.states[getEntityId(entity)];
       if (!stateObj) {
@@ -354,6 +405,7 @@ export class HaMap extends ReactiveElement {
         continue;
       }
 
+      console.log("Drawing a " + computeStateDomain(stateObj) + "...");
       if (computeStateDomain(stateObj) === "zone") {
         // DRAW ZONE
         if (passive && !this.renderPassive) {
@@ -362,10 +414,7 @@ export class HaMap extends ReactiveElement {
 
         // create marker with the icon
         this._mapZones.push(
-          this._createMarker([latitude, longitude], {
-            icon,
-            title
-          });
+          this._createMarker(Leaflet, [latitude, longitude], icon, title)
         );
 
         // create circle around it
@@ -378,17 +427,16 @@ export class HaMap extends ReactiveElement {
         );
 
         // Polygon
-        var polygonPointIcon = this._createIcon("mdi:circle-medium");
-        var points = [
+        var points: LatLngExpression[] = [
           [35.074192167305334, -80.73007106781007],
           [35.072752140779336, -80.73159456253053],
-          [35.073700453787710, -80.73262453079225],
-          [35.074982414965530, -80.73114395141603]
+          [35.07370045378771, -80.73262453079225],
+          [35.07498241496553, -80.73114395141603],
         ];
 
         for (const point of points) {
           this._mapZones.push(
-            this._createMarker(point, "mdi:circle-medium");
+            this._createMarker(Leaflet, point, "mdi:circle-medium")
           );
         }
 
@@ -444,32 +492,42 @@ export class HaMap extends ReactiveElement {
     this._mapZones.forEach((marker) => map.addLayer(marker));
   }
 
-  private _createIcon(icon, title = ""): divIcon {
+  private _createIcon(
+    Leaflet: typeof import("leaflet"),
+    icon: string | undefined,
+    title: string = ""
+  ): DivIcon {
     // create icon
-    let iconElement = null;
+    let iconElement: any = null;
     if (icon) {
-      const el = document.createElement("ha-icon");
-      el.setAttribute("icon", icon);
+      iconElement = document.createElement("ha-icon");
+      iconElement.setAttribute("icon", icon);
     } else {
-      const el = document.createElement("span");
-      el.innerHTML = title;
+      iconElement = document.createElement("span");
+      iconElement.innerHTML = title;
     }
 
     const className =
       this.darkMode ?? this.hass.themes.darkMode ? "dark" : "light";
 
     return Leaflet.divIcon({
-      html: iconElement.innerHTML,
+      html: iconElement.outerHTML,
       iconSize: [24, 24],
       className,
-    })
+    });
   }
 
-  private _createMarker(point: int[], icon: string, title: string = ""): marker {
+  private _createMarker(
+    Leaflet: typeof import("leaflet"),
+    point: LatLngExpression,
+    icon: string | undefined,
+    title: string = ""
+  ): Marker {
     // create marker with the icon
     return Leaflet.marker(point, {
-      icon: _createIcon(icon, title),
-      interactive: this.interactiveZones,
+      icon: this._createIcon(Leaflet, icon, title),
+      //interactive: true, //this.interactiveZones,
+      draggable: true,
       title,
     });
   }

@@ -2,7 +2,6 @@ import type { Map, TileLayer } from "leaflet";
 
 // Sets up a Leaflet map on the provided DOM element
 export type LeafletModuleType = typeof import("leaflet");
-export type LeafletDrawModuleType = typeof import("leaflet-draw");
 
 export const setupLeafletMap = async (
   mapElement: HTMLElement

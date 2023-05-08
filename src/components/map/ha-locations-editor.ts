@@ -72,13 +72,11 @@ export class HaLocationsEditor extends LitElement {
   constructor() {
     super();
 
-    this._loadPromise = import("leaflet").then((module) =>
-      import("leaflet-draw").then(() => {
-        this.Leaflet = module.default as LeafletModuleType;
-        this._updateMarkers();
-        return this.updateComplete.then(() => this.fitMap());
-      })
-    );
+    this._loadPromise = import("leaflet").then((module) => {
+      this.Leaflet = module.default as LeafletModuleType;
+      this._updateMarkers();
+      return this.updateComplete.then(() => this.fitMap());
+    });
   }
 
   public fitMap(): void {

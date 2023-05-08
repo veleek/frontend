@@ -4,7 +4,7 @@
     "dockerfile": "Dockerfile",
     "context": ".."
   },
-  "appPort": "8124:8123",
+  "appPort": "8125:8123",
   "postCreateCommand": "script/bootstrap",
   "containerEnv": {
     "WORKSPACE_DIRECTORY": "${containerWorkspaceFolder}"
@@ -25,7 +25,9 @@
         "editor.formatOnSave": true,
         "editor.formatOnType": true,
         "editor.renderWhitespace": "boundary",
-        "editor.rulers": [80],
+        "editor.rulers": [
+          80
+        ],
         "[typescript]": {
           "editor.defaultFormatter": "esbenp.prettier-vscode"
         },
